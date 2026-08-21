@@ -1,0 +1,16 @@
+[Unit]
+Description=iperf3 server (target for LAN-WAN throughput monitoring)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/iperf3 -s
+Restart=always
+RestartSec=5
+User=nobody
+NoNewPrivileges=true
+ProtectSystem=strict
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,86 @@
+services:
+  iperf3-exporter:
+    image: ghcr.io/sonh-nguyen/iperf3_exporter:sha-10751ea
+    container_name: iperf3-exporter
+    restart: unless-stopped
+    ports:
+      - "9579:9579"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9579/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  targets-admin:
+    build: ./targets-admin
+    container_name: targets-admin
+    restart: unless-stopped
+    environment:
+      - TARGETS_FILE=/data/iperf_servers.json
+    volumes:
+      - ./prometheus/targets:/data
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-30d}
+      - --web.enable-lifecycle
+      - --web.external-url=/prometheus/
+      - --web.route-prefix=/prometheus/
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      - ./prometheus/targets:/etc/prometheus/targets:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - iperf3-exporter
+      - targets-admin
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --web.external-url=http://localhost/alertmanager/
+      - --web.route-prefix=/alertmanager/
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: gateway
+    restart: unless-stopped
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - targets-admin
+      - prometheus
+      - alertmanager
+      - grafana
+
+volumes:
+  prometheus_data:
+  grafana_data:

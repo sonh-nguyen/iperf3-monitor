@@ -1,0 +1,105 @@
+{
+  "uid": "iperf3-lan-wan",
+  "title": "iPerf3 LAN-WAN Monitor",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "site",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(iperf3_up, site)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "selected": true, "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Probe status (1 = OK, 0 = failing)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "iperf3_up{site=~\"$site\"}",
+          "legendFormat": "{{site}} ({{job}})"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "value_and_name",
+        "colorMode": "background"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Download (Mbps)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "iperf3_received_bytes{job=\"iperf3-download\", site=~\"$site\"} / iperf3_received_seconds{job=\"iperf3-download\", site=~\"$site\"} * 8 / 1000000",
+          "legendFormat": "{{site}} download"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Mbits", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "title": "Upload (Mbps)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "iperf3_sent_bytes{job=\"iperf3-upload\", site=~\"$site\"} / iperf3_sent_seconds{job=\"iperf3-upload\", site=~\"$site\"} * 8 / 1000000",
+          "legendFormat": "{{site}} upload"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Mbits", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "title": "TCP Retransmits",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "iperf3_retransmits{site=~\"$site\"}",
+          "legendFormat": "{{site}} ({{job}})"
+        }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 30 } }, "overrides": [] }
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+groups:
+  - name: iperf3
+    rules:
+      - alert: IperfProbeDown
+        expr: iperf3_up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "iperf3 probe to {{ $labels.site }} is failing"
+          description: "Job {{ $labels.job }} target {{ $labels.instance }} (site={{ $labels.site }}) has been failing for 5 minutes."
+
+      # Example threshold of 50 Mbps — adjust to your actual plan/link speed.
+      - alert: IperfDownloadThroughputLow
+        expr: (iperf3_received_bytes{job="iperf3-download"} / iperf3_received_seconds{job="iperf3-download"} * 8 / 1e6) < 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Download throughput to {{ $labels.site }} below threshold"
+          description: "Measured download throughput for site={{ $labels.site }} has been below 50 Mbps for 10 minutes."
+
+      - alert: IperfUploadThroughputLow
+        expr: (iperf3_sent_bytes{job="iperf3-upload"} / iperf3_sent_seconds{job="iperf3-upload"} * 8 / 1e6) < 20
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Upload throughput to {{ $labels.site }} below threshold"
+          description: "Measured upload throughput for site={{ $labels.site }} has been below 20 Mbps for 10 minutes."

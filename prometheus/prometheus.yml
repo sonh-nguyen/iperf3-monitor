@@ -1,0 +1,87 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - path_prefix: /alertmanager/
+      static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: prometheus
+    metrics_path: /prometheus/metrics
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: iperf3-exporter-self
+    static_configs:
+      - targets: ["iperf3-exporter:9579"]
+
+  # Download direction (WAN -> LAN): server sends, exporter (client) receives.
+  - job_name: iperf3-download
+    metrics_path: /probe
+    scrape_interval: 60s
+    scrape_timeout: 50s
+    params:
+      reverse_mode: ["true"]
+      period: ["5s"]
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/iperf_servers.json
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [port]
+        target_label: __param_port
+      - source_labels: [streams]
+        target_label: __param_streams
+      - source_labels: [period]
+        target_label: __param_period
+        replacement: ${1}s
+      - source_labels: [interval]
+        target_label: __scrape_interval__
+        replacement: ${1}s
+      - source_labels: [__param_target]
+        target_label: instance
+      - source_labels: [name]
+        target_label: site
+      - target_label: __address__
+        replacement: iperf3-exporter:9579
+
+  # Upload direction (LAN -> WAN): exporter (client) sends, server receives.
+  - job_name: iperf3-upload
+    metrics_path: /probe
+    scrape_interval: 60s
+    scrape_timeout: 50s
+    params:
+      reverse_mode: ["false"]
+      period: ["5s"]
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/iperf_servers.json
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [port]
+        target_label: __param_port
+      - source_labels: [streams]
+        target_label: __param_streams
+      - source_labels: [period]
+        target_label: __param_period
+        replacement: ${1}s
+      - source_labels: [interval]
+        target_label: __scrape_interval__
+        replacement: ${1}s
+      - source_labels: [__param_target]
+        target_label: instance
+      - source_labels: [name]
+        target_label: site
+      - target_label: __address__
+        replacement: iperf3-exporter:9579
